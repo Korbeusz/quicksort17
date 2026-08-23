@@ -17,7 +17,7 @@ jobs:
       - name: Restore Android project
         run: |
           mkdir -p PaceMetronome
-          cat chatgpt-build/chunks/00.b64 chatgpt-build/chunks/01.b64 chatgpt-build/chunks/02.b64 chatgpt-build/chunks/03.b64 chatgpt-build/chunks/04.b64 chatgpt-build/chunks/05a.b64 chatgpt-build/chunks/05b.b64 chatgpt-build/chunks/06.b64 chatgpt-build/chunks/07.b64 chatgpt-build/chunks/08.b64 | base64 -d | tar -xz -C PaceMetronome
+          cat chatgpt-build/chunks/00.b64 chatgpt-build/chunks/01.b64 chatgpt-build/chunks/02.b64 chatgpt-build/chunks/03.b64 chatgpt-build/chunks/04.b64 chatgpt-build/chunks/05p00.b64 chatgpt-build/chunks/05p01.b64 chatgpt-build/chunks/05p02.b64 chatgpt-build/chunks/05p03.b64 chatgpt-build/chunks/05p04.b64 chatgpt-build/chunks/05p05.b64 chatgpt-build/chunks/05p06.b64 chatgpt-build/chunks/05p07.b64 chatgpt-build/chunks/06.b64 chatgpt-build/chunks/07.b64 chatgpt-build/chunks/08.b64 | base64 -d | tar -xz -C PaceMetronome
 
       - uses: actions/setup-java@v4
         with:
