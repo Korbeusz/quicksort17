@@ -1,0 +1,44 @@
+name: ChatGPT temporary APK build
+
+on:
+  push:
+    branches:
+      - chatgpt-apk-build-20260823
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Restore Android project
+        run: |
+          mkdir -p PaceMetronome
+          base64 -d chatgpt-build/PaceMetronome-source.tar.gz.b64 | tar -xz -C PaceMetronome
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - uses: android-actions/setup-android@v3
+
+      - name: Install Android SDK 37
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platforms;android-37" "build-tools;37.0.0"
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '9.3.1'
+
+      - name: Build debug APK
+        working-directory: PaceMetronome
+        run: gradle --no-daemon assembleDebug
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: PaceMetronome-custom-default-apk
+          path: PaceMetronome/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
