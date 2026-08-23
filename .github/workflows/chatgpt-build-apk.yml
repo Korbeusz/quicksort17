@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - chatgpt-apk-build-20260823
+  pull_request:
+    branches:
+      - master
 
 jobs:
   build:
