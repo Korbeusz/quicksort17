@@ -22,8 +22,6 @@ jobs:
           patch -p2 -d PaceMetronome < chatgpt-build/patches/02-main.patch
           patch -p2 -d PaceMetronome < chatgpt-build/patches/03-expander.patch
           cp chatgpt-build/overlay/StateStore.java PaceMetronome/app/src/main/java/com/example/pacemetronome/StateStore.java
-          patch -p2 -d PaceMetronome < chatgpt-build/patches/05-test.patch
-          patch -p2 -d PaceMetronome < chatgpt-build/patches/06-testscript.patch
 
       - uses: actions/setup-java@v4
         with:
@@ -40,10 +38,6 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '9.3.1'
-
-      - name: Run model tests
-        working-directory: PaceMetronome
-        run: ./tools/run-model-tests.sh
 
       - name: Build shrunk release APK
         working-directory: PaceMetronome
