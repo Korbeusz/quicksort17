@@ -18,9 +18,12 @@ jobs:
         run: |
           mkdir -p PaceMetronome
           cat chatgpt-build/chunks/00.b64 chatgpt-build/chunks/01.b64 chatgpt-build/chunks/02.b64 chatgpt-build/chunks/03.b64 chatgpt-build/chunks/04.b64 chatgpt-build/chunks/05p00.b64 chatgpt-build/chunks/05p01.b64 chatgpt-build/chunks/05p02.b64 chatgpt-build/chunks/05p03.b64 chatgpt-build/chunks/05p04.b64 chatgpt-build/chunks/05p05.b64 chatgpt-build/chunks/05p06.b64 chatgpt-build/chunks/05p07.b64 chatgpt-build/chunks/06.b64 chatgpt-build/chunks/07.b64 chatgpt-build/chunks/08.b64 | base64 -d | tar -xz -C PaceMetronome
-          for p in chatgpt-build/patches/*.patch; do
-            patch -p2 -d PaceMetronome < "$p"
-          done
+          patch -p2 -d PaceMetronome < chatgpt-build/patches/01-build.patch
+          patch -p2 -d PaceMetronome < chatgpt-build/patches/02-main.patch
+          patch -p2 -d PaceMetronome < chatgpt-build/patches/03-expander.patch
+          cp chatgpt-build/overlay/StateStore.java PaceMetronome/app/src/main/java/com/example/pacemetronome/StateStore.java
+          patch -p2 -d PaceMetronome < chatgpt-build/patches/05-test.patch
+          patch -p2 -d PaceMetronome < chatgpt-build/patches/06-testscript.patch
 
       - uses: actions/setup-java@v4
         with:
