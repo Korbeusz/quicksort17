@@ -1,0 +1,177 @@
+--- pm_old/PaceMetronome/app/src/main/java/com/example/pacemetronome/MainActivity.java	2026-08-23 13:15:32.000000000 +0000
++++ pm_opt/PaceMetronome/app/src/main/java/com/example/pacemetronome/MainActivity.java	2026-08-23 14:13:28.023124168 +0000
+@@ -44,6 +44,8 @@
+ 
+     private LinearLayout rootView;
+     private LinearLayout stagesContainer;
++    private EditText repeatCountInput;
++    private EditText patternLengthInput;
+     private EditText postMinutesInput;
+     private EditText postSecondsInput;
+     private Button addStageButton;
+@@ -161,11 +163,12 @@
+ 
+         TextView programHelp = UiKit.text(
+                 this,
+-                "Each stage holds its target BPM for the entered duration, then its Transition ramps smoothly to the next stage. Transition time is additional to the hold duration.",
++                "Each stage holds its target BPM for the entered duration, then its Transition ramps smoothly to the next stage. The repeat block keeps long programs compact and fast.",
+                 14f,
+                 UiKit.TEXT_SECONDARY
+         );
+         content.addView(programHelp, topMarginParams(LinearLayout.LayoutParams.MATCH_PARENT, 7f));
++        content.addView(buildRepeatCard(), topMarginParams(LinearLayout.LayoutParams.MATCH_PARENT, 14f));
+ 
+         stagesContainer = new LinearLayout(this);
+         stagesContainer.setOrientation(LinearLayout.VERTICAL);
+@@ -259,6 +262,31 @@
+         return card;
+     }
+ 
++    private View buildRepeatCard() {
++        LinearLayout card = new LinearLayout(this);
++        card.setOrientation(LinearLayout.VERTICAL);
++        UiKit.styleCard(card);
++
++        TextView help = UiKit.text(
++                this,
++                "Repeat only a short prefix instead of creating hundreds of UI rows. Example: repeat the first 4 stages 100 times, then run the remaining cooldown stages once.",
++                14f,
++                UiKit.TEXT_SECONDARY
++        );
++        card.addView(help);
++
++        LinearLayout inputs = new LinearLayout(this);
++        inputs.setOrientation(LinearLayout.HORIZONTAL);
++        patternLengthInput = numberInput();
++        repeatCountInput = numberInput();
++        inputs.addView(fieldBlock("Repeat first N stages", patternLengthInput), new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f));
++        LinearLayout.LayoutParams repeatParams = new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1f);
++        repeatParams.leftMargin = UiKit.dp(this, 10f);
++        inputs.addView(fieldBlock("Repeat count", repeatCountInput), repeatParams);
++        card.addView(inputs, topMarginParams(LinearLayout.LayoutParams.MATCH_PARENT, 14f));
++        return card;
++    }
++
+     private View buildPostTimerCard() {
+         LinearLayout card = new LinearLayout(this);
+         card.setOrientation(LinearLayout.VERTICAL);
+@@ -285,10 +313,13 @@
+     }
+ 
+     private void loadSavedProgram() {
++        StateStore.ProgramConfig config = StateStore.loadProgram(this);
+         stageEditors.clear();
+-        for (TempoStage stage : StateStore.loadStages(this)) {
++        for (TempoStage stage : config.getVisibleStages()) {
+             addStageEditor(stage);
+         }
++        patternLengthInput.setText(String.valueOf(config.getPatternLength()));
++        repeatCountInput.setText(String.valueOf(config.getRepeatCount()));
+         long timerSeconds = StateStore.loadPostTimerSeconds(this);
+         postMinutesInput.setText(String.valueOf(timerSeconds / 60L));
+         postSecondsInput.setText(String.valueOf(timerSeconds % 60L));
+@@ -297,20 +328,23 @@
+ 
+     private void loadExample() {
+         hideKeyboard();
++        StateStore.ProgramConfig config = StateStore.defaultProgram();
+         stageEditors.clear();
+-        for (TempoStage stage : StateStore.defaultStages()) {
++        for (TempoStage stage : config.getVisibleStages()) {
+             addStageEditor(stage);
+         }
++        patternLengthInput.setText(String.valueOf(config.getPatternLength()));
++        repeatCountInput.setText(String.valueOf(config.getRepeatCount()));
+         postMinutesInput.setText("1");
+         postSecondsInput.setText("0");
+         rebuildStageViews();
+         saveValidEditsSilently();
+-        Toast.makeText(this, "Default loaded: 100 alternating 200/300 BPM pairs, then 100/50/25 BPM cooldown stages.", Toast.LENGTH_SHORT).show();
++        Toast.makeText(this, "Compact default loaded: 200→300→200→100 cycle ×100, then 100/50/25 BPM cooldown.", Toast.LENGTH_SHORT).show();
+     }
+ 
+     private void addNewStage() {
+-        if (stageEditors.size() >= TempoSchedule.MAX_STAGES) {
+-            showError("A program can contain at most " + TempoSchedule.MAX_STAGES + " stages.");
++        if (stageEditors.size() >= 50) {
++            showError("Keep the editable template at 50 stages or fewer; use the repeat block for long programs.");
+             return;
+         }
+         int bpm = 120;
+@@ -376,10 +410,13 @@
+     private void prepareStart() {
+         hideKeyboard();
+         try {
+-            List<TempoStage> stages = readStages();
++            List<TempoStage> visibleStages = readVisibleStages();
++            int patternLength = readPatternLength();
++            int repeatCount = readRepeatCount();
++            List<TempoStage> expandedStages = ProgramExpander.expand(visibleStages, patternLength, repeatCount);
+             long timerSeconds = readPostTimerSeconds();
+-            StateStore.save(this, stages, timerSeconds);
+-            pendingProgram = new PendingProgram(ScheduleCodec.encode(stages), timerSeconds);
++            StateStore.save(this, visibleStages, patternLength, repeatCount, timerSeconds);
++            pendingProgram = new PendingProgram(ScheduleCodec.encode(expandedStages), timerSeconds);
+         } catch (IllegalArgumentException exception) {
+             showError(exception.getMessage());
+             return;
+@@ -420,15 +457,30 @@
+         stopButton.setEnabled(false);
+     }
+ 
+-    private List<TempoStage> readStages() {
++    private List<TempoStage> readVisibleStages() {
+         ArrayList<TempoStage> stages = new ArrayList<>(stageEditors.size());
+         for (StageEditorView editor : stageEditors) {
+             stages.add(editor.readStage());
+         }
+-        // Constructor performs cross-stage and total-duration validation.
+         return new TempoSchedule(stages).getStages();
+     }
+ 
++    private int readPatternLength() {
++        int patternLength = readInt(patternLengthInput, "Repeat-pattern length");
++        if (patternLength < 0 || patternLength > stageEditors.size()) {
++            throw new IllegalArgumentException("Repeat first N stages must be between 0 and " + stageEditors.size() + ".");
++        }
++        return patternLength;
++    }
++
++    private int readRepeatCount() {
++        int repeatCount = readInt(repeatCountInput, "Repeat count");
++        if (repeatCount < 1 || repeatCount > 500) {
++            throw new IllegalArgumentException("Repeat count must be between 1 and 500.");
++        }
++        return repeatCount;
++    }
++
+     private long readPostTimerSeconds() {
+         int minutes = readInt(postMinutesInput, "Post-timer minutes");
+         int seconds = readInt(postSecondsInput, "Post-timer seconds");
+@@ -533,10 +585,14 @@
+         }
+         addStageButton.setEnabled(enabled);
+         resetExampleButton.setEnabled(enabled);
++        patternLengthInput.setEnabled(enabled);
++        repeatCountInput.setEnabled(enabled);
+         postMinutesInput.setEnabled(enabled);
+         postSecondsInput.setEnabled(enabled);
+         addStageButton.setAlpha(enabled ? 1f : 0.45f);
+         resetExampleButton.setAlpha(enabled ? 1f : 0.45f);
++        patternLengthInput.setAlpha(enabled ? 1f : 0.55f);
++        repeatCountInput.setAlpha(enabled ? 1f : 0.55f);
+         postMinutesInput.setAlpha(enabled ? 1f : 0.55f);
+         postSecondsInput.setAlpha(enabled ? 1f : 0.55f);
+     }
+@@ -563,7 +619,10 @@
+             return;
+         }
+         try {
+-            StateStore.save(this, readStages(), readPostTimerSeconds());
++            List<TempoStage> visibleStages = readVisibleStages();
++            int patternLength = readPatternLength();
++            int repeatCount = readRepeatCount();
++            StateStore.save(this, visibleStages, patternLength, repeatCount, readPostTimerSeconds());
+         } catch (IllegalArgumentException ignored) {
+             // Keep unfinished edits visible instead of replacing them with older valid values.
+         }

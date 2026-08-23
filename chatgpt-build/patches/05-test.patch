@@ -1,0 +1,38 @@
+--- pm_old/PaceMetronome/tools/model-test-src/com/example/pacemetronome/TempoScheduleTestMain.java	2026-08-23 13:15:32.000000000 +0000
++++ pm_opt/PaceMetronome/tools/model-test-src/com/example/pacemetronome/TempoScheduleTestMain.java	2026-08-23 14:13:56.673204563 +0000
+@@ -31,20 +31,24 @@
+         ));
+         assertClose(150.0, descending.bpmAt(45.0), 1e-9, "descending ramp midpoint");
+ 
+-        ArrayList<TempoStage> requested = new ArrayList<>();
+-        for (int i = 0; i < 100; i++) {
+-            requested.add(new TempoStage(200, 60, 10));
+-            requested.add(new TempoStage(300, 7, 7));
+-        }
+-        requested.add(new TempoStage(100, 600, 0));
+-        requested.add(new TempoStage(50, 600, 0));
+-        requested.add(new TempoStage(25, 600, 0));
+-        TempoSchedule requestedSchedule = new TempoSchedule(requested);
+-        assertEquals(203, requestedSchedule.size(), "requested default stage count");
+-        assertClose(10_200.0, requestedSchedule.getTotalDurationSeconds(), 1e-9, "requested default duration");
++        List<TempoStage> compactTemplate = List.of(
++                new TempoStage(200, 60, 10),
++                new TempoStage(300, 7, 7),
++                new TempoStage(200, 60, 10),
++                new TempoStage(100, 7, 7),
++                new TempoStage(100, 600, 0),
++                new TempoStage(50, 600, 0),
++                new TempoStage(25, 600, 0)
++        );
++        List<TempoStage> expanded = ProgramExpander.expand(compactTemplate, 4, 100);
++        TempoSchedule requestedSchedule = new TempoSchedule(expanded);
++        assertEquals(403, requestedSchedule.size(), "compact default expanded stage count");
++        assertClose(18_600.0, requestedSchedule.getTotalDurationSeconds(), 1e-9, "compact default duration");
+         assertClose(200.0, requestedSchedule.bpmAt(0.0), 1e-9, "requested initial BPM");
+         assertClose(250.0, requestedSchedule.bpmAt(65.0), 1e-9, "200 to 300 ramp midpoint");
+         assertClose(250.0, requestedSchedule.bpmAt(80.5), 1e-9, "300 to 200 ramp midpoint");
++        assertClose(150.0, requestedSchedule.bpmAt(149.0), 1e-9, "200 to 100 ramp midpoint");
++        assertClose(150.0, requestedSchedule.bpmAt(164.5), 1e-9, "100 back to 200 ramp midpoint");
+ 
+         expectFailure(() -> new TempoSchedule(List.of(new TempoStage(10, 60, 0))), "BPM validation");
+         expectFailure(() -> new TempoSchedule(List.of(new TempoStage(120, 0, 0))), "duration validation");

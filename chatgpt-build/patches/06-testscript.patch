@@ -1,0 +1,9 @@
+--- pm_old/PaceMetronome/tools/run-model-tests.sh	2026-08-23 09:00:02.000000000 +0000
++++ pm_opt/PaceMetronome/tools/run-model-tests.sh	2026-08-23 14:13:56.673071375 +0000
+@@ -8,6 +8,7 @@
+ javac -d "$OUT" \
+   "$PROJECT_DIR/app/src/main/java/com/example/pacemetronome/TempoStage.java" \
+   "$PROJECT_DIR/app/src/main/java/com/example/pacemetronome/TempoSchedule.java" \
++  "$PROJECT_DIR/app/src/main/java/com/example/pacemetronome/ProgramExpander.java" \
+   "$PROJECT_DIR/app/src/main/java/com/example/pacemetronome/TimeFormat.java" \
+   "$PROJECT_DIR/tools/model-test-src/com/example/pacemetronome/TempoScheduleTestMain.java"

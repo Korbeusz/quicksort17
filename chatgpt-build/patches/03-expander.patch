@@ -1,0 +1,50 @@
+--- pm_old/PaceMetronome/app/src/main/java/com/example/pacemetronome/ProgramExpander.java	1970-01-01 00:00:00.000000000 +0000
++++ pm_opt/PaceMetronome/app/src/main/java/com/example/pacemetronome/ProgramExpander.java	2026-08-23 14:12:58.772669553 +0000
+@@ -0,0 +1,47 @@
++package com.example.pacemetronome;
++
++import java.util.ArrayList;
++import java.util.List;
++
++/** Expands a small editable template into the full playback schedule only when needed. */
++public final class ProgramExpander {
++    private ProgramExpander() {
++    }
++
++    public static List<TempoStage> expand(List<TempoStage> visibleStages, int patternLength, int repeatCount) {
++        if (visibleStages == null || visibleStages.isEmpty()) {
++            throw new IllegalArgumentException("Add at least one tempo stage.");
++        }
++        if (patternLength < 0 || patternLength > visibleStages.size()) {
++            throw new IllegalArgumentException("Repeat-pattern length must be between 0 and the number of visible stages.");
++        }
++        if (repeatCount < 1 || repeatCount > 500) {
++            throw new IllegalArgumentException("Repeat count must be between 1 and 500.");
++        }
++
++        int effectivePattern = (patternLength == 0 || repeatCount == 1) ? 0 : patternLength;
++        long expandedCount = effectivePattern == 0
++                ? visibleStages.size()
++                : (long) effectivePattern * repeatCount + (visibleStages.size() - effectivePattern);
++        if (expandedCount > TempoSchedule.MAX_STAGES) {
++            throw new IllegalArgumentException(
++                    "This repeat setup expands to " + expandedCount + " stages; the maximum is " + TempoSchedule.MAX_STAGES + "."
++            );
++        }
++
++        ArrayList<TempoStage> expanded = new ArrayList<>((int) expandedCount);
++        if (effectivePattern == 0) {
++            expanded.addAll(visibleStages);
++        } else {
++            for (int repetition = 0; repetition < repeatCount; repetition++) {
++                for (int index = 0; index < effectivePattern; index++) {
++                    expanded.add(visibleStages.get(index));
++                }
++            }
++            for (int index = effectivePattern; index < visibleStages.size(); index++) {
++                expanded.add(visibleStages.get(index));
++            }
++        }
++        return new TempoSchedule(expanded).getStages();
++    }
++}
